@@ -30,6 +30,7 @@ import com.jme3.scene.shape.Sphere;
 import com.jme3.texture.Texture;
 import com.jme3.util.SkyFactory;
 import com.jme3.water.WaterFilter;
+import java.util.Random;
 
 /**
  * Test 
@@ -184,9 +185,85 @@ public class NavigationMouse extends SimpleApplication implements AnalogListener
 //  brickPhy.setFriction(0.20f); cim mensi, tim vic na ne pusobi sila, mensi treni
         bulletAppState.getPhysicsSpace().add(wallPhy);
     }
-    
+    //
+    Random random = new Random();
+    int rand = 0;
+    int countRandom = 0;
+    Vector3f prevXYZ = playerNode.getLocalTranslation();
+    //
    @Override
     public void simpleUpdate(float tpf) {
+        /**
+         * zatim  to dela tak, ze jednou za 20 spusteni tehle metody se zmeni random smer a hrac tam jde
+         */
+        Vector3f modelForwardDir = playerNode.getWorldRotation().mult(Vector3f.UNIT_Z);
+        walkDirection.set(0, 0, 0);
+        //
+        if (countRandom < 20) {
+        /**   playerControl.getViewDirection() timhle ziskam smer pohledu, pro zkousku jestli je dalsi policko zed
+         *  pak musim zkontolovat vsechny moznosti
+         * 
+         * dopredu - +x, -x, +z, -z (+ - znamena, ze dopredu x-sovou souradnici pricitam a naopak)
+         * 1) dopredu +x, doprava -z, dozadu -x, doleva +z
+         * 2) dopredu -x, doprava +z, dozadu +x, doleva -z
+         * 3) dopredu +z, doprava +x, dozadu -z, doleva -x
+         * 4) dopredu -z, doprava -x, dozadu +z, doleva +x
+        */
+         
+//        if ((playerNode.getLocalTranslation().z)/4 < map.length && (playerNode.getLocalTranslation().x)/4 < map.length) {
+//            if (map[(int)(playerNode.getLocalTranslation().z)/4][(int)(playerNode.getLocalTranslation().x)/4] != 1 
+//            ||
+//            map[(int)(playerNode.getLocalTranslation().z)/4][(int)(playerNode.getLocalTranslation().x)/4] != 2) {
+                countRandom++;
+                
+//                if (prevXYZ.equals(playerNode.getLocalTranslation())) {
+//                    countRandom = 0;
+//                    rand = random.nextInt(4);  
+//                }
+//                prevXYZ = playerNode.getLocalTranslation();
+
+            } else {
+                countRandom = 0;
+                rand = random.nextInt(4);
+            }
+            switch (rand) {
+                case 0: // move up
+                    walkDirection.addLocal(modelForwardDir.mult(speed));
+                    break;
+                case 1: // move right
+                    walkDirection.addLocal(modelForwardDir.crossLocal(Vector3f.UNIT_Y).multLocal(speed * tpf).mult(4 * speed));
+                    break;
+                case 2: // move down
+                    walkDirection.addLocal(modelForwardDir.mult(speed).negate()); 
+                    break;
+                case 3: // move left
+                    walkDirection.addLocal(modelForwardDir.crossLocal(Vector3f.UNIT_Y).multLocal(-speed * tpf).mult(4 * speed));
+                    break;
+            }
+        //}
+        
+        
+//        switch (foundDirection(playerNode.getLocalTranslation())) {
+//            case 1:
+//                while (map[][enemy.x] != 1) {
+//                    while (enemy.x % 4 == 0) {
+//                        enemy.move(0, 0.1f, 0);
+//                    }
+//                    foundPlayer(playerNode.getLocalTranslation(), enemy.getLocalTranslation());
+//                }
+//                break;
+//            default:
+//                while (map[enemy.z][] != 1) {
+//                    while (enemy.z % 4 == 0) {
+//                        enemy.move(0, 0, 0.1f);
+//                    }
+//                    foundPlayer(playerNode.getLocalTranslation(), enemy.getLocalTranslation());
+//                }
+//                break;
+//        }
+                
+                
+        //
         inputManager.setCursorVisible(false);
         if (playerNode.getLocalTranslation().y < -2 ) {
             health -= 1;
@@ -206,10 +283,10 @@ public class NavigationMouse extends SimpleApplication implements AnalogListener
         listener.setLocation(cam.getLocation());
         listener.setRotation(cam.getRotation());
         // Get current forward and left vectors of the playerNode:
-        Vector3f modelForwardDir = playerNode.getWorldRotation().mult(Vector3f.UNIT_Z);
+ //       Vector3f modelForwardDir = playerNode.getWorldRotation().mult(Vector3f.UNIT_Z);
         Vector3f modelLeftDir = playerNode.getWorldRotation().mult(Vector3f.UNIT_X);
         // determine the change in direction
-        walkDirection.set(0, 0, 0);
+       // walkDirection.set(0, 0, 0);
         if (forward) {
             walkDirection.addLocal(modelForwardDir.mult(speed));
         } else if (backward) {
@@ -363,5 +440,77 @@ public class NavigationMouse extends SimpleApplication implements AnalogListener
         guiNode.attachChild(bulletText);
         mapText = new BitmapText(assetManager.loadFont("Interface/Fonts/SnapITC.fnt"));
         mapText.move(settings.getWidth()/2 - 120, settings.getHeight() - 150, 0); 
+    }
+    
+    // new
+    private int foundDirection(Vector3f position) {
+        int cx = 0, cz = 0;
+        int z = (int) position.z, x = (int) position.x;
+        //while (map[z + 1][x] != 1) {
+        while (map[(int) position.z][x + 1] != 1 || map[(int) position.z][x + 1] !=  2) {
+           cx++; 
+        }
+        //while (map[z + 1][x] != 1) {
+        while (map[z + 1][(int) position.x] != 1 || map[z + 1][(int) position.x] !=  2) {
+           cz++; 
+        }
+        if (cx > cz) {
+            return 1;
+        } else if (cz > cx) {
+            return 2;
+        }
+        return 0;
+    }
+    
+    public void foundPlayer(Vector3f playerPos, Vector3f enemyPos) {
+        int px = (int) playerPos.x, pz = (int) playerPos.z;
+        int ex = (int) enemyPos.x, ez = (int) enemyPos.z;
+        int i = 0, max = 0;
+        int direction = 0;
+        if (px == ex || pz == ez) {
+            boolean isWall = false;
+            if (px < ex || pz < ez) {
+                if (px == ex) {
+                   i = px/4; max = ex/4; 
+                   direction = 1;
+                } else {
+                    i = pz/4; max = ez/4;
+                    direction = 2;
+                }
+            } else if (px > ex || pz > ez) {
+                if (px == ex) {
+                    i = ex/4; max = px/4;
+                    direction = 1;
+                } else {
+                    i = ez/4; max = pz/4;
+                    direction = 2;
+                }
+            } else if (px == ex && pz == ez) {
+                System.out.println("You died by the enemys");
+                app.stop();
+            }
+            for (; i < max; i++) {
+                switch (direction) {
+                    case 1:
+                        //if (map[i][px] == 1) {
+                        if (map[i][px] == 1 || map[i][px] == 2) {
+                            isWall = true; break;
+                        }
+                        break;
+                    case 2:
+                         //if (map[i][px] == 1) {
+                        if (map[pz][i] == 1 || map[pz][i] == 2) {
+                            isWall = true; break;
+                        }
+                        break;
+                }
+            }
+            if (!isWall) {
+               // enemy.wait(1500l); // pockani
+               // enemy.setSpeed(10f); // zrychleni
+            }
+        } else {
+            // enemy.setSpeed(3f); // zpomaleni
+        }
     }
 }
